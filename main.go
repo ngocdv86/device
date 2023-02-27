@@ -14,40 +14,63 @@ import (
 	"time"
 )
 
-var (
+const (
 	GOOS = runtime.GOOS
+	PORT = 8699
 )
 
-type Response struct {
-	ID          int    `json:"id"`
+var (
+	mainMACAddress string
+	serialNumber   string
+)
+
+type TokenResponse struct {
 	Token       string `json:"token"`
 	ExpiredTime int    `json:"expired_time"`
 }
 
 func getMainMacAddress() (string, error) {
-	var mainMacAddress string
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
 	}
+
+	//Debug
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp != 0 && iface.HardwareAddr.String() != "" {
+			fmt.Println(iface.Name, iface.HardwareAddr.String(), iface.HardwareAddr[0]&2 == 2)
+		}
+	}
+
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagUp != 0 && iface.HardwareAddr.String() != "" {
 			if GOOS == "darwin" && iface.Name == "en0" {
-				mainMacAddress = iface.HardwareAddr.String()
+				mainMACAddress = iface.HardwareAddr.String()
 				break
 			} else if GOOS == "windows" && iface.Name == "Ethernet" {
-				mainMacAddress = iface.HardwareAddr.String()
+				mainMACAddress = iface.HardwareAddr.String()
 				break
 			} else if GOOS == "linux" && (iface.Name == "eth0" || iface.Name == "enp0s3") {
-				mainMacAddress = iface.HardwareAddr.String()
+				mainMACAddress = iface.HardwareAddr.String()
 				break
 			}
 		}
 	}
-	if mainMacAddress == "" {
+
+	if mainMACAddress == "" {
+		for _, iface := range interfaces {
+			if iface.Flags&net.FlagUp != 0 && iface.HardwareAddr.String() != "" && iface.HardwareAddr[0]&2 != 2 {
+				mainMACAddress = iface.HardwareAddr.String()
+				break
+			}
+		}
+	}
+
+	if mainMACAddress == "" {
 		return "", fmt.Errorf("unable to determine main MAC address")
 	}
-	return mainMacAddress, nil
+
+	return mainMACAddress, nil
 }
 
 func getSerialNumber() (string, error) {
@@ -110,51 +133,61 @@ func getSerialNumber() (string, error) {
 	}
 }
 
-func getToken() (Response, error) {
+func requestToken() (TokenResponse, error) {
 	url := "https://jsonplaceholder.typicode.com/posts"
 	requestBody, err := json.Marshal(map[string]any{
 		"token":        "token",
 		"expired_time": time.Now().Unix() + 3600,
 	})
 	if err != nil {
-		return Response{}, err
+		return TokenResponse{}, err
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		return Response{}, err
+		return TokenResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	var response Response
+	var response TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return Response{}, err
+		return TokenResponse{}, err
 	}
 
 	return response, nil
 }
 
 func main() {
-	fmt.Println("Running...")
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		mainMacAddress, err := getMainMacAddress()
-		if err != nil {
-			log.Fatal(err)
+	fmt.Printf("Running in localhost:%d\n", PORT)
+
+	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		if mainMACAddress == "" {
+			mainMACAddress, err = getMainMacAddress()
+			if err != nil {
+				fmt.Printf("Get main MAC address err: %v\n", err)
+			}
 		}
 
-		serialNumber, err := getSerialNumber()
-		if err != nil {
-			log.Fatal(err)
+		if serialNumber == "" {
+			serialNumber, err = getSerialNumber()
+			if err != nil {
+				fmt.Printf("Get Serial number err: %v\n", err)
+			}
 		}
 
-		rs, err := getToken()
+		token, err := requestToken()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Printf("requestToken err: %v\n", err)
 		}
 
-		fmt.Fprintf(w, "MAC address: %v\nSerial Number: %s\nTest call api: %+v", mainMacAddress, serialNumber, rs)
+		fmt.Fprintf(w, "GOOS: %s\nMAC address: %v\nSerial Number: %s\nTest call api: %+v",
+			GOOS,
+			mainMACAddress,
+			serialNumber,
+			token)
 	})
 
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", PORT), nil))
 }
