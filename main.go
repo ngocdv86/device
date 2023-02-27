@@ -162,6 +162,11 @@ func main() {
 	fmt.Printf("Running in localhost:%d\n", PORT)
 
 	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		type myResponse struct {
+			DeviceToken string    `json:"device_token"`
+			ExpiredTime time.Time `json:"expired_time"`
+		}
+
 		var err error
 		if mainMACAddress == "" {
 			mainMACAddress, err = getMainMacAddress()
@@ -177,16 +182,23 @@ func main() {
 			}
 		}
 
-		token, err := requestToken()
-		if err != nil {
+		if _, err = requestToken(); err != nil {
 			fmt.Printf("requestToken err: %v\n", err)
 		}
 
-		fmt.Fprintf(w, "GOOS: %s\nMAC address: %v\nSerial Number: %s\nTest call api: %+v",
-			GOOS,
-			mainMACAddress,
-			serialNumber,
-			token)
+		fmt.Println(mainMACAddress, serialNumber)
+
+		response := myResponse{
+			DeviceToken: mainMACAddress,
+			ExpiredTime: time.Now().Add(time.Hour),
+		}
+
+		jsonBytes, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(jsonBytes)
 	})
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", PORT), nil))
