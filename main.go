@@ -167,6 +167,10 @@ func main() {
 	fmt.Printf("Running in localhost:%d\n", PORT)
 
 	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type")
+
 		var err error
 		if mainMACAddress == "" {
 			mainMACAddress, err = getMainMacAddress()
