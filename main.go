@@ -22,11 +22,18 @@ const (
 var (
 	mainMACAddress string
 	serialNumber   string
+	deviceToken    DeviceToken
+	URL            = "https://dev-online-gateway.ghn.vn/sso-v2/public-api/staff/gen-device-token"
 )
 
-type TokenResponse struct {
-	Token       string `json:"token"`
-	ExpiredTime int    `json:"expired_time"`
+type DeviceToken struct {
+	Token       string    `json:"device_token"`
+	ExpiredTime time.Time `json:"expired_time"`
+}
+type GenDeviceTokenResponse struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    DeviceToken `json:"data"`
 }
 
 func getMainMacAddress() (string, error) {
@@ -133,40 +140,33 @@ func getSerialNumber() (string, error) {
 	}
 }
 
-func requestToken() (TokenResponse, error) {
-	url := "https://jsonplaceholder.typicode.com/posts"
+func requestDeviceToken(deviceID string) (response DeviceToken, err error) {
 	requestBody, err := json.Marshal(map[string]any{
-		"token":        "token",
-		"expired_time": time.Now().Unix() + 3600,
+		"device_id": deviceID,
 	})
 	if err != nil {
-		return TokenResponse{}, err
+		return
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(URL, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		return TokenResponse{}, err
+		return
 	}
 	defer resp.Body.Close()
 
-	var response TokenResponse
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	var rs GenDeviceTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&rs)
 	if err != nil {
-		return TokenResponse{}, err
+		return
 	}
 
-	return response, nil
+	return rs.Data, nil
 }
 
 func main() {
 	fmt.Printf("Running in localhost:%d\n", PORT)
 
 	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
-		type myResponse struct {
-			DeviceToken string    `json:"device_token"`
-			ExpiredTime time.Time `json:"expired_time"`
-		}
-
 		var err error
 		if mainMACAddress == "" {
 			mainMACAddress, err = getMainMacAddress()
@@ -182,18 +182,16 @@ func main() {
 			}
 		}
 
-		if _, err = requestToken(); err != nil {
-			fmt.Printf("requestToken err: %v\n", err)
-		}
-
 		fmt.Println(mainMACAddress, serialNumber)
-
-		response := myResponse{
-			DeviceToken: mainMACAddress,
-			ExpiredTime: time.Now().Add(time.Hour),
+		if deviceToken.Token == "" || deviceToken.ExpiredTime.Before(time.Now()) {
+			deviceToken, err = requestDeviceToken(mainMACAddress)
+			if err != nil {
+				fmt.Printf("Request device token err: %v\n", err)
+				return
+			}
 		}
 
-		jsonBytes, err := json.Marshal(response)
+		jsonBytes, err := json.Marshal(deviceToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
