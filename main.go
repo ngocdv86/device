@@ -155,18 +155,17 @@ func setup() error {
 			return err
 		}
 	case "windows":
-		fmt.Println("Start windows")
-		cmd, err := execCommand("powershell.exe", "Get-ExecutionPolicy")
+		_, err := execCommand("powershell.exe", "Get-ExecutionPolicy")
 		if err != nil {
 			return err
 		}
 
-		o, err := cmd.Output()
-		if string(o) == "Restricted" {
-			if _, err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
-				return err
-			}
-		}
+		// o, err := cmd.Output()
+		// if string(o) == "Restricted" {
+		// 	if _, err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
+		// 		return err
+		// 	}
+		// }
 
 		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
 			return err
@@ -176,11 +175,13 @@ func setup() error {
 			return err
 		}
 
-		if _, err := execCommand("powershell.exe", "-Command", "mkcert -pkcs12 localhost"); err != nil {
+		if _, err := execCommand("powershell.exe", "-Command", "mkcert install"); err != nil {
 			return err
 		}
 
-		fmt.Println("End windows")
+		if _, err := execCommand("powershell.exe", "-Command", "mkcert -cert-file cert.pem -key-file key.pem localhost"); err != nil {
+			return err
+		}
 
 	}
 
