@@ -104,14 +104,14 @@ func requestDeviceToken(deviceID string) (response DeviceToken, err error) {
 	return rs.Data, nil
 }
 
-func execCommand(name string, args ...string) error {
+func execCommand(name string, args ...string) (*exec.Cmd, error) {
 	cmd := exec.Command(name, args...)
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Error executing command: %s......\n", err.Error())
-		return err
+		return nil, err
 	}
 
 	var wg sync.WaitGroup
@@ -132,39 +132,53 @@ func execCommand(name string, args ...string) error {
 
 	if err := cmd.Wait(); err != nil {
 		log.Printf("Error waiting for command execution: %s......\n", err.Error())
-		return err
+		return nil, err
 	}
 
-	return nil
+	return cmd, nil
 }
 
 func setup() error {
 	switch GOOS {
 	case "darwin":
 		// https://web.dev/how-to-use-local-https/
-		if err := execCommand("brew", "install", "mkcert"); err != nil {
+		if _, err := execCommand("brew", "install", "mkcert"); err != nil {
 			return err
 		}
-		if err := execCommand("brew", "install", "nss"); err != nil {
+		if _, err := execCommand("brew", "install", "nss"); err != nil {
 			return err
 		}
-		if err := execCommand("mkcert", "-install"); err != nil {
+		if _, err := execCommand("mkcert", "-install"); err != nil {
 			return err
 		}
-		if err := execCommand("mkcert", "-cert-file", "cert.pem", "-key-file", "key.pem", "localhost"); err != nil {
+		if _, err := execCommand("mkcert", "-cert-file", "cert.pem", "-key-file", "key.pem", "localhost"); err != nil {
 			return err
 		}
 	case "windows":
 		fmt.Println("Start windows")
-		if err := execCommand("powershell.exe", "Get-ExecutionPolicy"); err != nil {
+		cmd, err := execCommand("powershell.exe", "Get-ExecutionPolicy")
+		if err != nil {
+			return err
+		}
+		o, err := cmd.Output()
+		if err != nil {
+			return err
+		}
+		if string(o) == "Restricted" {
+			if _, err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
+				return err
+			}
+		}
+
+		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
 			return err
 		}
 
-		// if err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
-		// 	return err
-		// }
+		if _, err := execCommand("powershell.exe", "-Command", "choco install mkcert"); err != nil {
+			return err
+		}
 
-		if err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
+		if _, err := execCommand("powershell.exe", "-Command", "mkcert -pkcs12 localhost"); err != nil {
 			return err
 		}
 
