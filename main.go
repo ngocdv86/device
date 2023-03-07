@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -101,18 +104,65 @@ func requestDeviceToken(deviceID string) (response DeviceToken, err error) {
 	return rs.Data, nil
 }
 
+func execCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+
+	if err := cmd.Start(); err != nil {
+		log.Printf("Error executing command: %s......\n", err.Error())
+		return err
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		io.Copy(os.Stdout, stdout)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		io.Copy(os.Stderr, stderr)
+	}()
+
+	wg.Wait()
+
+	if err := cmd.Wait(); err != nil {
+		log.Printf("Error waiting for command execution: %s......\n", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func setup() error {
-	if _, err := exec.Command("brew", "install", "mkcert").Output(); err != nil {
-		return err
+	switch GOOS {
+	case "darwin":
+		// https://web.dev/how-to-use-local-https/
+		if err := execCommand("brew", "install", "mkcert"); err != nil {
+			return err
+		}
+		if err := execCommand("brew", "install", "nss"); err != nil {
+			return err
+		}
+		if err := execCommand("mkcert", "-install"); err != nil {
+			return err
+		}
+		if err := execCommand("mkcert", "-cert-file", "cert.pem", "-key-file", "key.pem", "localhost"); err != nil {
+			return err
+		}
+	case "windows":
+		fmt.Println("Start windows")
+		if err := execCommand("powershell.exe", "Get-ExecutionPolicy"); err != nil {
+			return err
+		}
+		fmt.Println("End windows")
+
 	}
 
-	if _, err := exec.Command("mkcert", "-install").Output(); err != nil {
-		return err
-	}
-
-	if _, err := exec.Command("mkcert", "-cert-file", "cert.pem", "-key-file", "key.pem", "localhost").Output(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -121,7 +171,7 @@ func main() {
 	if err := setup(); err != nil {
 		fmt.Printf("Setup error: %v\n", err)
 	}
-	fmt.Printf("Running in localhost:%d\n", PORT)
+	fmt.Printf("\n\nRunning in https://localhost:%d\n", PORT)
 
 	var err error
 	mainMACAddress, err = getMainMacAddress()
