@@ -1,4 +1,3 @@
-
 dist/
-
-dist/
+cert.pem
+key.pem
