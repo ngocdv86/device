@@ -155,17 +155,13 @@ func setup() error {
 			return err
 		}
 	case "windows":
-		_, err := execCommand("powershell.exe", "Get-ExecutionPolicy")
-		if err != nil {
+		if _, err := execCommand("powershell.exe", "-Command", "Get-ExecutionPolicy"); err != nil {
 			return err
 		}
 
-		// o, err := cmd.Output()
-		// if string(o) == "Restricted" {
-		// 	if _, err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
-		// 		return err
-		// 	}
-		// }
+		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
+			return err
+		}
 
 		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
 			return err
@@ -182,7 +178,6 @@ func setup() error {
 		if _, err := execCommand("powershell.exe", "-Command", "mkcert -cert-file cert.pem -key-file key.pem localhost"); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
