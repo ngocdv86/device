@@ -156,7 +156,10 @@ func setup() error {
 		}
 	case "windows":
 		fmt.Println("Start windows")
-		if err := execCommand("PowerShell.exe", "-ExecutionPolicy", "Bypass", "-Command", "Get-ExecutionPolicy"); err != nil {
+		if err := execCommand("powershell.exe", "Get-ExecutionPolicy"); err != nil {
+			return err
+		}
+		if err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
 			return err
 		}
 		fmt.Println("End windows")
