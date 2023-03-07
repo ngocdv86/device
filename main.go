@@ -160,10 +160,8 @@ func setup() error {
 		if err != nil {
 			return err
 		}
+
 		o, err := cmd.Output()
-		if err != nil {
-			return err
-		}
 		if string(o) == "Restricted" {
 			if _, err := execCommand("powershell.exe", "Set-ExecutionPolicy", "AllSigned"); err != nil {
 				return err
