@@ -171,6 +171,10 @@ func setup() error {
 			return err
 		}
 
+		if _, err := execCommand("powershell.exe", "-Command", "choco install nss"); err != nil {
+			return err
+		}
+
 		if _, err := execCommand("powershell.exe", "-Command", "mkcert install"); err != nil {
 			return err
 		}

@@ -1,0 +1,9 @@
+- Hệ điều hành Windows
+    Giải nén, nhấn chuột phải vào phần mềm 'sso-agent', sau đó chọn 'Run as Administrator' 
+
+    Nếu muốn sử dụng với trình duyệt Firefox, cần thao tác các bước sau:
+    1. Mở trình duyệt Firefox và nhập about:config vào thanh địa chỉ.
+    2. Nhấn nút "Tôi sẽ cẩn thận, hứa!".
+    3. Tìm kiếm security.enterprise_roots.enabled trong khung tìm kiếm.
+    4. Nhấn đúp vào giá trị của security.enterprise_roots.enabled để chuyển giá trị của nó từ false sang true.
+    5. Khởi động lại trình duyệt Firefox.
