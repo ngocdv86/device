@@ -165,7 +165,8 @@ func setup() error {
 			return err
 		} else {
 			fmt.Printf("ExecutionPolicy: %s\n", string(out))
-			if string(out) == "Restricted" {
+			fmt.Println(string(out) != "AllSigned")
+			if string(out) != "AllSigned" {
 				if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
 					return err
 				}
