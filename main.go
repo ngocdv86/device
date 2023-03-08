@@ -164,8 +164,7 @@ func setup() error {
 		if out, err := execCommandWithoutLog("powershell.exe", "-Command", "Get-ExecutionPolicy"); err != nil {
 			return err
 		} else {
-			fmt.Printf("ExecutionPolicy: %s\n", string(out))
-			fmt.Println(string(out) != "AllSigned")
+			fmt.Printf("Get-ExecutionPolicy: %s\n", string(out))
 			if string(out) != "AllSigned" {
 				if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
 					return err
@@ -173,12 +172,20 @@ func setup() error {
 			}
 		}
 
-		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
-			return err
+		if out, err := execCommandWithoutLog("powershell.exe", "-Command", "choco -v"); err != nil {
+			if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
+				return err
+			}
+		} else {
+			fmt.Printf("choco -v: %s\n", string(out))
 		}
 
-		if _, err := execCommand("powershell.exe", "-Command", "choco install mkcert"); err != nil {
-			return err
+		if out, err := execCommandWithoutLog("powershell.exe", "-Command", "mkcert -version"); err != nil {
+			if _, err := execCommand("powershell.exe", "-Command", "choco install mkcert"); err != nil {
+				return err
+			}
+		} else {
+			fmt.Printf("mkcert -version: %s\n", string(out))
 		}
 
 		if _, err := execCommand("powershell.exe", "-Command", "mkcert install"); err != nil {
