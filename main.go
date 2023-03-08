@@ -138,6 +138,12 @@ func execCommand(name string, args ...string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
+func execCommandWithoutLog(name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	out, err := cmd.Output()
+	return out, err
+}
+
 func setup() error {
 	switch GOOS {
 	case "darwin":
@@ -155,12 +161,15 @@ func setup() error {
 			return err
 		}
 	case "windows":
-		if _, err := execCommand("powershell.exe", "-Command", "Get-ExecutionPolicy"); err != nil {
+		if out, err := execCommandWithoutLog("powershell.exe", "-Command", "Get-ExecutionPolicy"); err != nil {
 			return err
-		}
-
-		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
-			return err
+		} else {
+			fmt.Printf("ExecutionPolicy: %s\n", string(out))
+			if string(out) == "Restricted" {
+				if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
+					return err
+				}
+			}
 		}
 
 		if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"); err != nil {
@@ -168,10 +177,6 @@ func setup() error {
 		}
 
 		if _, err := execCommand("powershell.exe", "-Command", "choco install mkcert"); err != nil {
-			return err
-		}
-
-		if _, err := execCommand("powershell.exe", "-Command", "choco install nss"); err != nil {
 			return err
 		}
 
