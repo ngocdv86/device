@@ -24,4 +24,4 @@ Run
 - Linux
     - Open terminal, enter `sudo ./device`
 - Windows
-    - Double click to `device` app.
+    - Right click to `device` app, Run as Administrator
