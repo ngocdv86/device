@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -148,12 +149,41 @@ func setup() error {
 	switch GOOS {
 	case "darwin":
 		// https://web.dev/how-to-use-local-https/
-		if _, err := execCommand("brew", "install", "mkcert"); err != nil {
-			return err
+
+		// Install brew
+		if _, err := exec.LookPath("brew"); err != nil {
+			tmpFile := filepath.Join(os.TempDir(), "brew_install.sh")
+			f, err := os.Create(tmpFile)
+			if err != nil {
+				return fmt.Errorf("Cannot create %s file: %v", tmpFile, err)
+			}
+			defer os.Remove(tmpFile)
+
+			resp, err := http.Get("https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")
+			if err != nil {
+				return fmt.Errorf("Cannot install brew install file: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if _, err := io.Copy(f, resp.Body); err != nil {
+				return fmt.Errorf("Cannot store file: %v", err)
+			}
+
+			if _, err := execCommand("/bin/bash", tmpFile); err != nil {
+				return fmt.Errorf("Cannot install brew: %v", err)
+			}
 		}
+
+		if _, err := exec.LookPath("mkcert"); err != nil {
+			if _, err := execCommand("brew", "install", "mkcert"); err != nil {
+				return err
+			}
+		}
+
 		if _, err := execCommand("brew", "install", "nss"); err != nil {
 			return err
 		}
+
 		if _, err := execCommand("mkcert", "-install"); err != nil {
 			return err
 		}
@@ -168,6 +198,8 @@ func setup() error {
 			if string(out) != "AllSigned" {
 				if _, err := execCommand("powershell.exe", "-Command", "Set-ExecutionPolicy AllSigned"); err != nil {
 					return err
+				} else {
+					fmt.Println("Set-ExecutionPolicy AllSigned")
 				}
 			}
 		}
