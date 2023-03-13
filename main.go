@@ -148,20 +148,22 @@ func execCommandWithoutLog(name string, args ...string) ([]byte, error) {
 func setup() error {
 	switch GOOS {
 	case "linux":
-		if _, err := execCommand("apt-get", "update", "-y"); err != nil {
-			return err
-		}
-		if _, err := execCommand("apt-get", "install", "wget", "libnss3-tools"); err != nil {
-			return err
-		}
-		if _, err := execCommand("wget", "https://github.com/FiloSottile/mkcert/releases/download/v1.4.3/mkcert-v1.4.3-linux-amd64"); err != nil {
-			return err
-		}
-		if _, err := execCommand("mv", "mkcert-v1.4.3-linux-amd64", "/usr/bin/mkcert"); err != nil {
-			return err
-		}
-		if _, err := execCommand("chmod", "+x", "/usr/bin/mkcert"); err != nil {
-			return err
+		if _, err := execCommand("mkcert", "--version"); err != nil {
+			if _, err := execCommand("apt-get", "update", "-y"); err != nil {
+				return err
+			}
+			if _, err := execCommand("apt-get", "install", "wget", "libnss3-tools"); err != nil {
+				return err
+			}
+			if _, err := execCommand("wget", "https://github.com/FiloSottile/mkcert/releases/download/v1.4.3/mkcert-v1.4.3-linux-amd64"); err != nil {
+				return err
+			}
+			if _, err := execCommand("mv", "mkcert-v1.4.3-linux-amd64", "/usr/bin/mkcert"); err != nil {
+				return err
+			}
+			if _, err := execCommand("chmod", "+x", "/usr/bin/mkcert"); err != nil {
+				return err
+			}
 		}
 		if _, err := execCommand("mkcert", "--version"); err != nil {
 			return err
