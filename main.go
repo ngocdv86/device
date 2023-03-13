@@ -164,10 +164,11 @@ func setup() error {
 			if _, err := execCommand("chmod", "+x", "/usr/bin/mkcert"); err != nil {
 				return err
 			}
+			if _, err := execCommand("mkcert", "--version"); err != nil {
+				return err
+			}
 		}
-		if _, err := execCommand("mkcert", "--version"); err != nil {
-			return err
-		}
+
 		if _, err := execCommand("mkcert", "-install"); err != nil {
 			return err
 		}
